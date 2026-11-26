@@ -2,7 +2,11 @@
 <html lang="en">
 	<head>
 		<meta charset="utf-8">
-		<meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0">
+		<meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0, viewport-fit=cover">
+		<meta name="mobile-web-app-capable" content="yes">
+		<meta name="apple-mobile-web-app-capable" content="yes">
+		<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+		<meta name="apple-mobile-web-app-title" content="Gobble Getaway">
 		<title>Gobble Getaway</title>
 		<style>
 html, body, #canvas {
@@ -90,6 +94,52 @@ body {
 	z-index: 1;
 }
 
+/* Gobble Getaway: back-to-full-screen button for phones (shown only after
+   you've left full screen; the first tap goes full screen by itself). */
+#full-btn {
+	position: fixed;
+	bottom: 8px;
+	left: 50%;
+	transform: translateX(-50%);
+	z-index: 3;
+	display: none;
+	padding: 8px 16px;
+	border: 2px solid #ffd36b;
+	border-radius: 999px;
+	background: rgba(20, 12, 6, 0.85);
+	color: #ffd36b;
+	font: 600 14px/1.2 'Noto Sans', Arial, sans-serif;
+}
+
+/* Gobble Getaway: iPhones can't go full screen in the browser, but a Home
+   Screen icon opens the game like an app. A one-time tip says how. */
+#ios-tip {
+	position: fixed;
+	bottom: 10px;
+	left: 50%;
+	transform: translateX(-50%);
+	z-index: 3;
+	display: none;
+	max-width: 90%;
+	padding: 10px 40px 10px 16px;
+	border: 2px solid #ffd36b;
+	border-radius: 14px;
+	background: rgba(20, 12, 6, 0.92);
+	color: #fff3d6;
+	font: 600 15px/1.3 'Noto Sans', Arial, sans-serif;
+}
+
+#ios-tip button {
+	position: absolute;
+	top: 4px;
+	right: 6px;
+	border: 0;
+	background: none;
+	color: #ffd36b;
+	font: 700 20px/1 Arial, sans-serif;
+	padding: 4px 8px;
+}
+
 /* Gobble Getaway: a short "turn sideways" hint for phones held upright. */
 #turn-hint {
 	position: fixed;
@@ -107,8 +157,8 @@ body {
 	transition: opacity 0.6s;
 }
 		</style>
-		<link id="-gd-engine-icon" rel="icon" type="image/png" href="gg-a50ced9-1126.1101.icon.png" />
-<link rel="apple-touch-icon" href="gg-a50ced9-1126.1101.apple-touch-icon.png"/>
+		<link id="-gd-engine-icon" rel="icon" type="image/png" href="gg-04442dc-1126.1127.icon.png" />
+<link rel="apple-touch-icon" href="gg-04442dc-1126.1127.apple-touch-icon.png"/>
 
 	</head>
 	<body>
@@ -121,12 +171,85 @@ body {
 		</noscript>
 
 		<div id="status">
-			<img id="status-splash" class="show-image--true fullsize--true use-filter--true" src="gg-a50ced9-1126.1101.png" alt="">
+			<img id="status-splash" class="show-image--true fullsize--true use-filter--true" src="gg-04442dc-1126.1127.png" alt="">
 			<progress id="status-progress"></progress>
 			<div id="status-notice"></div>
 		</div>
 
 		<div id="turn-hint">Turn your phone sideways for the best view</div>
+		<button id="full-btn" type="button">&#x26F6; Full screen</button>
+		<div id="ios-tip">&#x1F4F2; Play full screen: tap <b>Share</b> &#x2191; then <b>&ldquo;Add to Home Screen&rdquo;</b><button type="button" aria-label="Close">&times;</button></div>
+		<script>
+(function () {
+	const ua = navigator.userAgent;
+	const ios = /iPhone|iPad|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+	const standalone = window.navigator.standalone === true || window.matchMedia('(display-mode: standalone)').matches;
+	let dismissed = false;
+	try {
+		dismissed = localStorage.getItem('gg-ios-tip') === 'closed';
+	} catch (e) { /* Private mode: just show it. */ }
+	if (!ios || standalone || dismissed) {
+		return;
+	}
+	const tip = document.getElementById('ios-tip');
+	tip.style.display = 'block';
+	tip.querySelector('button').addEventListener('click', function (event) {
+		event.stopPropagation();
+		tip.style.display = 'none';
+		try {
+			localStorage.setItem('gg-ios-tip', 'closed');
+		} catch (e) { /* Fine. */ }
+	});
+	setTimeout(function () { tip.style.display = 'none'; }, 15000);
+}());
+		</script>
+		<script>
+// Phones: the browser's address bar eats a lot of a sideways screen, so the
+// first tap goes full screen (Android; iPhones can "Add to Home Screen").
+(function () {
+	const el = document.documentElement;
+	const request = el.requestFullscreen || el.webkitRequestFullscreen;
+	if (!(navigator.maxTouchPoints > 0) || !request) {
+		return;
+	}
+	const btn = document.getElementById('full-btn');
+	let tried = false;
+	function isFull() {
+		return !!(document.fullscreenElement || document.webkitFullscreenElement);
+	}
+	function lockSideways() {
+		try {
+			screen.orientation.lock('landscape').catch(function () {});
+		} catch (e) { /* Not supported: fine. */ }
+	}
+	function goFull() {
+		tried = true;
+		try {
+			const p = request.call(el, { navigationUI: 'hide' });
+			if (p && p.then) {
+				p.then(lockSideways).catch(function () {});
+			} else {
+				lockSideways();
+			}
+		} catch (e) { /* Blocked: the button stays available. */ }
+		update();
+	}
+	function update() {
+		btn.style.display = tried && !isFull() ? 'block' : 'none';
+	}
+	window.addEventListener('touchend', function () {
+		if (!tried && !isFull()) {
+			goFull();
+		}
+	}, { passive: true });
+	btn.addEventListener('click', function (event) {
+		event.stopPropagation();
+		goFull();
+	});
+	document.addEventListener('fullscreenchange', update);
+	document.addEventListener('webkitfullscreenchange', update);
+}());
+		</script>
 		<script>
 (function () {
 	const hint = document.getElementById('turn-hint');
@@ -139,9 +262,9 @@ body {
 	setTimeout(function () { hint.style.opacity = '0'; }, 6000);
 }());
 		</script>
-		<script src="gg-a50ced9-1126.1101.js"></script>
+		<script src="gg-04442dc-1126.1127.js"></script>
 		<script>
-const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"emscriptenPoolSize":8,"ensureCrossOriginIsolationHeaders":true,"executable":"gg-a50ced9-1126.1101","experimentalVK":false,"fileSizes":{"gg-a50ced9-1126.1101.pck":810108,"gg-a50ced9-1126.1101.wasm":39514754},"focusCanvas":true,"gdextensionLibs":[],"godotPoolSize":4};
+const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"emscriptenPoolSize":8,"ensureCrossOriginIsolationHeaders":true,"executable":"gg-04442dc-1126.1127","experimentalVK":true,"fileSizes":{"gg-04442dc-1126.1127.pck":812652,"gg-04442dc-1126.1127.wasm":39514754},"focusCanvas":true,"gdextensionLibs":[],"godotPoolSize":4};
 const GODOT_THREADS_ENABLED = false;
 const engine = new Engine(GODOT_CONFIG);
 
