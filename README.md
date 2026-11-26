@@ -2,4 +2,4 @@
 
 Play in a browser: https://mconatser.github.io/gobble-getaway-play/
 
-This repo holds only the exported web build of the M1 gray box. On a phone, hold it sideways: left thumb steers, drag the right side to turn the camera, and use the SNEAK / SPRINT / GOBBLE buttons. On a computer, use WASD, Ctrl to sneak, Shift to sprint, E to gobble, and F1 for tuning.
+This repo holds only the exported web build of the gray-box prototype. On a phone, hold it sideways: left thumb steers, the right side turns, tilts and pinch-zooms the camera, and the buttons do the rest (hold GOBBLE and drag to aim). On a computer: WASD, Ctrl sneak, Shift sprint, hold E to aim a gobble, Q play dead, Space flap, F1 tuning.
